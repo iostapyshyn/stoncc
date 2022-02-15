@@ -18,19 +18,19 @@ pub enum Node {
     },
 }
 
-fn expr_bp(tokens: &mut Lexer, min_prec: i32) -> Node {
+fn binexpr(tokens: &mut Lexer, min_prec: i32) -> Node {
     let mut lhs = match tokens.next() {
         v @ (Token::Int(_) | Token::Sym(_))
             => Node::Leaf(LeafVal::from(v)),
         Token::LParen => {
-            let lhs = expr_bp(tokens, 0);
+            let lhs = binexpr(tokens, 0);
             assert_eq!(tokens.next(), Token::RParen);
             lhs
         }
         op @ (Token::Minus | Token::Plus) => {
             let op = NodeVal::from(&op);
             let prec = op.prefix_prec();
-            let rhs = expr_bp(tokens, prec);
+            let rhs = binexpr(tokens, prec);
             Node::Node { v: op, children: vec![rhs] }
         }
         e => panic!("Expected literal, found {e:?}")
@@ -43,8 +43,8 @@ fn expr_bp(tokens: &mut Lexer, min_prec: i32) -> Node {
             op => NodeVal::from(op),
         };
 
-        if let Some(lhs_prec) = op.postfix_prec() {
-            if lhs_prec < min_prec {
+        if let Some(prec) = op.postfix_prec() {
+            if prec <= min_prec {
                 break;
             }
 
@@ -54,14 +54,14 @@ fn expr_bp(tokens: &mut Lexer, min_prec: i32) -> Node {
             continue;
         }
 
-        let (lhs_prec, rhs_prec) = op.infix_prec();
-        if lhs_prec < min_prec {
+        let prec = op.infix_prec();
+        if prec < min_prec || (prec == min_prec && op.is_lassoc()) {
             break;
         }
 
         tokens.next();
 
-        let rhs = expr_bp(tokens, rhs_prec);
+        let rhs = binexpr(tokens, prec);
 
         lhs = Node::Node { v: op, children: vec![lhs, rhs]};
     };
@@ -71,24 +71,30 @@ fn expr_bp(tokens: &mut Lexer, min_prec: i32) -> Node {
 
 pub fn expr(s: &[u8]) -> Node {
     let mut lexer = Lexer::new(s);
-    expr_bp(&mut lexer, 0)
+    binexpr(&mut lexer, 0)
 }
 
 fn fac(n: i32) -> i32 {
     match n {
-        0 => 1,
-        1 => 1,
+        0 | 1 => 1,
         n => fac(n-1) * n,
     }
 }
 
 impl NodeVal {
-    pub fn infix_prec(&self) -> (i32, i32) {
+    pub fn infix_prec(&self) -> i32 {
         match self {
-            NodeVal::Add | NodeVal::Sub => (1,2),
-            NodeVal::Mul | NodeVal::Div => (3,4),
-            NodeVal::Exp => (8,7),
+            NodeVal::Add | NodeVal::Sub => 1,
+            NodeVal::Mul | NodeVal::Div => 3,
+            NodeVal::Exp => 7,
             _ => panic!(),
+        }
+    }
+
+    pub fn is_lassoc(&self) -> bool {
+        match self {
+            NodeVal::Exp | NodeVal::Mul => false,
+            _ => true,
         }
     }
 

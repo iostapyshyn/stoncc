@@ -8,25 +8,37 @@ pub enum Token {
     Minus,
     Star,
     Slash,
-    Caret,                      // right assoc test
-    Fac,                        // unary postfix
     LParen,
     RParen,
+    Caret,
+    Fac,
+    // LBracket,
+    // RBracket,
+    // LBrace,
+    // RBrace,
+    // Dot,
+    // Percent,
     Eof,
 }
 
 impl Token {
-    fn from_op(c: u8) -> Self {
-        match c {
+    fn from_op(s: &[u8]) -> Self {
+        match s[0] {
             b'+' => Token::Plus,
             b'-' => Token::Minus,
             b'*' => Token::Star,
             b'/' => Token::Slash,
-            b'^' => Token::Caret,
-            b'!' => Token::Fac,
             b'(' => Token::LParen,
             b')' => Token::RParen,
-            _ => panic!(),
+            b'^' => Token::Caret,
+            b'!' => Token::Fac,
+            // b'[' => Token::LBracket,
+            // b']' => Token::RBracket,
+            // b'{' => Token::LBrace,
+            // b'}' => Token::RBrace,
+            // b'.' => Token::Dot,
+            // b'%' => Token::Percent,
+            _ => panic!("{}", s[0] as char),
         }
     }
 
@@ -85,8 +97,10 @@ impl<'a> Lexer<'a> {
                 b'*' | b'/' |
                 b'^' | b'!' |
                 b'(' | b')' => {
+                    let t = Token::from_op(&s[*i..]);
                     *i += 1;
-                    return Token::from_op(c);
+
+                    return t;
                 }
                 b'0'..=b'9' => {
                     let (t, j) = Token::from_int(&s[*i..]);

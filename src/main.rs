@@ -39,5 +39,6 @@ fn main() {
 
     let ast = parser::expr(&s);
 
-    println!("Evaluating {ast}: {}", eval(&ast));
+    print!("Evaluating {ast}: ");
+    println!("{}", eval(&ast));
 }
